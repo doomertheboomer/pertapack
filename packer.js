@@ -45,6 +45,12 @@ function encryptAES(plaintext, key, iv) {
     return encrypted;
 }
 
+function numberToBufferLE(num) {
+    const buf = Buffer.alloc(4);
+    buf.writeUInt32LE(num, 0);
+    return buf;
+}
+
 (async () => {
     try {
         await renameFile(inputFilename, originalFilename);
@@ -53,11 +59,11 @@ function encryptAES(plaintext, key, iv) {
         const iv = Buffer.from('xxxxPERTAPCKxxxx', 'utf-8');
         const ciphertext = encryptAES(plaintext, key, iv);
 
-        const crc = crc32(plaintext).readUInt32LE(0);
+        const crc = crc32(plaintext);
         const header = Buffer.alloc(13);
         header.write('PTPCK', 0, 5, 'utf-8');
-        header.writeUInt32LE(crc, 5);
-        header.writeUInt32LE(plaintext.length, 9);
+        header.set(numberToBufferLE(crc), 5);
+        header.set(numberToBufferLE(plaintext.length), 9);
 		
         const outputFile = Buffer.concat([header, ciphertext]);
         await writeFile(outputFilename, outputFile);

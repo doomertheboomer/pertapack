@@ -52,23 +52,30 @@ BOOL WINAPI hook_ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToR
 
     // check if file is part of encrypted files map
     auto it = openFiles.find(hFile);
-    if (it != openFiles.end()) { 
+    if (it != openFiles.end()) {
         puts("Reading PertaPacked file");
         // get file offset for returning
         int offset = 0;
         if (lpOverlapped) {
-            offset = lpOverlapped->Offset + (lpOverlapped->OffsetHigh << 32);
+            offset = lpOverlapped->Offset;
+            
+            lpOverlapped->Internal = 0;
+            lpOverlapped->InternalHigh = nNumberOfBytesToRead;
+
+            if (lpOverlapped->hEvent != NULL) {
+                SetEvent(lpOverlapped->hEvent);
+            }
         }
         else {
             offset = SetFilePointer(hFile, 0, nullptr, FILE_CURRENT);
         }
-        auto retVal = orig_ReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
         memcpy(lpBuffer, it->second.data() + offset, nNumberOfBytesToRead);
-        return retVal;
+        return TRUE;
     }
 
     return orig_ReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
 }
+
 
 typedef BOOL(WINAPI* PCloseHandle)(HANDLE hObject);
 PCloseHandle orig_CloseHandle;
